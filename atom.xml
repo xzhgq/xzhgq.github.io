@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <title>你的部落格名稱</title>
+    <subtitle>你的部落格簡介或副標題</subtitle>
+    <link href="https://virusru-gif.github.io/atom.xml" rel="self"/>
+    <link href="https://virusru-gif.github.io/"/>
+    <updated>2026-06-06T00:00:00Z</updated>
+    <id>https://virusru-gif.github.io/</id>
+    <author>
+        <name>你的名字或網誌站長</name>
+    </author>
+    
+    <entry>
+        <title>第一篇範例文章標題</title>
+        <link href="https://virusru-gif.github.io/your-first-post.html"/>
+        <id>https://virusru-gif.github.io/your-first-post.html</id>
+        <updated>2026-06-06T00:00:00Z</updated>
+        <summary>這是第一篇文章的摘要或簡短內容描述。</summary>
+    </entry>
+</feed>

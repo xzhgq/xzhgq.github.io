@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=1200">
+ <title>我的個人部落格</title>
+ <script src="https://cdn.tailwindcss.com"></script>
+ <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&display=swap" rel="stylesheet">
+ <style>
+ body {
+ font-family: 'Noto Serif TC', "PMingLiU", serif;
+ background-color: #f4ebd0; /* 溫潤牛皮紙底色 */
+ color: #3d2c1e; /* 復古墨褐色字體 */
+ min-width: 1200px;
+ }
+ .kraft-card {
+ background-color: #faf3e0; /* 復古紙卡片背景 */
+ border: 1px solid #d4c4a8; /* 牛皮紙深色邊框 */
+ box-shadow: 3px 3px 10px rgba(92, 70, 48, 0.1);
+ }
+ .kraft-header {
+ background: linear-gradient(135deg, #e3d3b3 0%, #d4c4a8 100%);
+ border-bottom: 3px solid #b59f78;
+ }
+ .kraft-btn {
+ background-color: #b59f78;
+ color: #ffffff;
+ border: 1px solid #9c845c;
+ transition: all 0.2s;
+ }
+ .kraft-btn:hover { background-color: #9c845c; }
+ .kraft-input {
+ background-color: #faf3e0;
+ border: 1px solid #c2b091;
+ color: #3d2c1e;
+ }
+ .kraft-input:focus {
+ outline: none;
+ border-color: #8c734b;
+ box-shadow: 0 0 0 1px #8c734b;
+ }
+ </style>
+</head>
+<body class="min-h-screen pb-12 flex flex-col justify-between">
+
+ <div>
+ <!-- 公告彈跳視窗 Modal -->
+ <div id="announcement-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
+ <div class="bg-[#faf3e0] border-2 border-[#b59f78] p-6 rounded-lg shadow-xl max-w-lg w-full mx-4 space-y-4 text-[#3d2c1e]">
+ <div class="flex justify-between items-center border-b border-[#d4c4a8] pb-2">
+ <h3 class="text-base font-bold tracking-wider">📢 網站最新公告</h3>
+ <button onclick="closeAnnouncement()" class="text-[#8c734b] hover:text-[#3d2c1e] font-bold text-sm">✕</button>
+ </div>
+ <div id="announcement-content" class="text-xs text-[#5c4430] space-y-2 max-h-60 overflow-y-auto leading-relaxed">
+ <!-- 公告內容動態載入 -->
+ </div>
+ <div class="text-right pt-2">
+ <button onclick="closeAnnouncement()" class="kraft-btn text-xs px-4 py-1.5 rounded font-medium">我知道了</button>
+ </div>
+ </div>
+ </div>
+
+ <header class="kraft-header shadow-md">
+ <div class="w-[1200px] mx-auto px-6 py-6 flex justify-between items-center">
+ <div>
+ <h1 id="blog-title-display" class="text-3xl font-bold tracking-widest text-[#3d2c1e]">我的個人部落格</h1>
+ <p class="text-xs text-[#73593b] mt-1 tracking-wider">GitHub Pages ｜ 雲端同步版</p>
+ </div>
+ </div>
+ </header>
+
+ <main class="w-[1200px] mx-auto px-6 py-8 grid grid-cols-12 gap-8">
+ <section class="col-span-8">
+ <div id="main-content">
+ <div class="kraft-card p-8 rounded text-center text-[#73593b]">正在從 GitHub 載入資料...</div>
+ </div>
+ </section>
+ <aside id="sidebar-container" class="col-span-4 space-y-6">
+ </aside>
+ </main>
+ </div>
+
+ <!-- 頁尾版權宣告 -->
+ <footer class="w-[1200px] mx-auto px-6 text-center text-xs text-[#73593b] pt-8 border-t border-[#d4c4a8] mt-12">
+ Copyright @2026 版權所有翻印必究 YOUR NAME. All Rights Reserved.
+ </footer>
+
+ <script>
+ const GITHUB_USER = "xzhgq"; 
+ const GITHUB_REPO = "xzhgq.github.io"; 
+
+ async function getCloudData(key, defaultValue) {
+ try {
+ const url = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/blog-data.json?t=${new Date().getTime()}`;
+ const res = await fetch(url);
+ if (!res.ok) return defaultValue;
+ const allData = await res.json();
+ return allData[key] !== undefined ? allData[key] : defaultValue;
+ } catch (err) {
+ console.error("GET Error:", err);
+ return defaultValue;
+ }
+ }
+
+ async function loadAllData() {
+ const title = await getCloudData('blog_title', '我的個人部落格');
+ const articles = await getCloudData('blog_articles', []);
+ const customWidgets = await getCloudData('blog_custom_widgets', []);
+ const sidebarOrder = await getCloudData('blog_sidebar_order', ["recent", "category", "popular"]);
+ const announcements = await getCloudData('blog_announcements', []);
+
+ document.getElementById('blog-title-display').innerText = title;
+ document.title = title;
+
+ if (announcements && announcements.length > 0) {
+ showAnnouncements(announcements);
+ }
+
+ return { title, articles, sidebarOrder, customWidgets, announcements };
+ }
+
+ function showAnnouncements(announcements) {
+ if (sessionStorage.getItem('announcement_closed') === 'true') return;
+ const contentEl = document.getElementById('announcement-content');
+ contentEl.innerHTML = announcements.map(ann => `
+ <div class="p-3 bg-[#f2e6cb] rounded border border-[#d4c4a8]">
+ <div class="text-[10px] text-[#73593b] mb-1">${ann.date || ''}</div>
+ <div>${ann.text}</div>
+ </div>
+ `).join('');
+ document.getElementById('announcement-modal').classList.remove('hidden');
+ }
+
+ window.closeAnnouncement = function() {
+ document.getElementById('announcement-modal').classList.add('hidden');
+ sessionStorage.setItem('announcement_closed', 'true');
+ };
+
+ async function router() {
+ const data = await loadAllData();
+ const hash = location.hash;
+
+ if (hash.startsWith('#article/')) {
+ const id = Number(hash.split('/')[1]);
+ renderArticleDetail(id, data);
+ } else if (hash.startsWith('#category/')) {
+ const categoryName = decodeURIComponent(hash.split('/')[1]);
+ renderCategoryList(categoryName, data);
+ } else {
+ renderArticleList(data);
+ }
+ renderSidebar(data);
+ }
+
+ function renderArticleList(data) {
+ const container = document.getElementById('main-content');
+ let html = `<h2 class="text-xl font-bold border-b-2 border-[#b59f78] pb-2 text-[#3d2c1e] tracking-wider mb-8">最新發佈文章</h2>`;
+
+ if (data.articles.length === 0) {
+ html += `<div class="kraft-card p-8 rounded text-[#73593b] text-center">目前尚無文章，請至後台發佈新文章。</div>`;
+ container.innerHTML = html;
+ return;
+ }
+
+ // 限制最多顯示 8 篇
+ const limitedArticles = data.articles.slice(0, 5);
+
+ html += `<div class="space-y-8">` + limitedArticles.map(article => {
+ return `
+ <article class="kraft-card p-8 rounded space-y-4">
+ <div>
+ <div class="flex justify-between items-center mb-2">
+ <a href="#category/${encodeURIComponent(article.category || '未分類')}" class="text-xs bg-[#e8dbbf] text-[#5c4430] px-2.5 py-1 rounded font-medium border border-[#c2b091] hover:bg-[#d4c4a8] transition">${article.category || '未分類'}</a>
+ <div class="text-xs text-[#73593b] tracking-wider">
+ 發佈時間：${article.date} ｜ 瀏覽次數：<span id="view-count-${article.id}">${article.views || 0}</span>
+ </div>
+ </div>
+ <h3 class="text-2xl font-bold text-[#3d2c1e] tracking-wide hover:text-[#73593b] transition">
+ <a href="#article/${article.id}">${article.title}</a>
+ </h3>
+ </div>
+ <div class="text-[#5c4430] text-sm leading-relaxed line-clamp-3">
+ ${article.content}
+ </div>
+ <div class="pt-2 flex justify-end items-center border-t border-[#d4c4a8]">
+ <a href="#article/${article.id}" class="kraft-btn text-xs px-4 py-2 rounded inline-block font-medium">閱讀全文 & 留言</a>
+ </div>
+ </article>
+ `;}).join('') + `</div>`;
+
+ container.innerHTML = html;
+ }
+
+ function renderCategoryList(categoryName, data) {
+ const container = document.getElementById('main-content');
+ const filteredArticles = data.articles.filter(a => (a.category || '未分類') === categoryName);
+
+ let html = `
+ <div class="mb-6 flex justify-between items-center">
+ <a href="#" class="text-xs text-[#73593b] hover:text-[#3d2c1e] font-bold">← 返回所有文章</a>
+ <span class="text-xs bg-[#e8dbbf] text-[#5c4430] px-3 py-1 rounded border border-[#c2b091]">分類：${categoryName} (${filteredArticles.length} 篇)</span>
+ </div>
+ <h2 class="text-xl font-bold border-b-2 border-[#b59f78] pb-2 text-[#3d2c1e] tracking-wider mb-8">「${categoryName}」類別文章</h2>
+ `;
+
+ if (filteredArticles.length === 0) {
+ html += `<div class="kraft-card p-8 rounded text-[#73593b] text-center">此類別目前尚無文章。</div>`;
+ container.innerHTML = html;
+ return;
+ }
+
+ html += `<div class="space-y-8">` + filteredArticles.map(article => {
+ return `
+ <article class="kraft-card p-8 rounded space-y-4">
+ <div>
+ <div class="flex justify-between items-center mb-2">
+ <span class="text-xs bg-[#e8dbbf] text-[#5c4430] px-2.5 py-1 rounded font-medium border border-[#c2b091]">${article.category || '未分類'}</span>
+ <div class="text-xs text-[#73593b] tracking-wider">
+ 發佈時間：${article.date} ｜ 瀏覽次數：${article.views || 0}
+ </div>
+ </div>
+ <h3 class="text-2xl font-bold text-[#3d2c1e] tracking-wide hover:text-[#73593b] transition">
+ <a href="#article/${article.id}">${article.title}</a>
+ </h3>
+ </div>
+ <div class="text-[#5c4430] text-sm leading-relaxed line-clamp-3">
+ ${article.content}
+ </div>
+ <div class="pt-2 flex justify-end items-center border-t border-[#d4c4a8]">
+ <a href="#article/${article.id}" class="kraft-btn text-xs px-4 py-2 rounded inline-block font-medium">閱讀全文 & 留言</a>
+ </div>
+ </article>
+ `;}).join('') + `</div>`;
+
+ container.innerHTML = html;
+ }
+
+ async function renderArticleDetail(id, data) {
+ const container = document.getElementById('main-content');
+ const article = data.articles.find(a => a.id === id);
+
+ if (!article) {
+ container.innerHTML = `<div class="kraft-card p-8 rounded text-center space-y-4"><p class="text-[#73593b]">找不到此文章。</p><a href="#" class="kraft-btn text-xs px-4 py-2 rounded inline-block">返回首頁</a></div>`;
+ return;
+ }
+
+ // 動態增加並更新瀏覽次數顯示（模擬跳動）
+ const currentViews = (article.views || 0) + 1;
+
+ container.innerHTML = `
+ <div class="mb-6">
+ <a href="#" class="text-xs text-[#73593b] hover:text-[#3d2c1e] font-bold">← 返回文章列表</a>
+ </div>
+ <article class="kraft-card p-8 rounded space-y-6">
+ <div>
+ <div class="flex justify-between items-center mb-2">
+ <a href="#category/${encodeURIComponent(article.category || '未分類')}" class="text-xs bg-[#e8dbbf] text-[#5c4430] px-2.5 py-1 rounded font-medium border border-[#c2b091] hover:bg-[#d4c4a8] transition">${article.category || '未分類'}</a>
+ <div class="text-xs text-[#73593b] tracking-wider">
+ 發佈時間：${article.date} ｜ 瀏覽次數：<span class="font-bold text-[#3d2c1e]">${currentViews}</span>
+ </div>
+ </div>
+ <h2 class="text-3xl font-bold text-[#3d2c1e] tracking-wide">${article.title}</h2>
+ </div>
+ <div class="text-[#5c4430] text-sm leading-relaxed whitespace-pre-wrap pb-6 border-b border-[#d4c4a8]">
+ ${article.content}
+ </div>
+ 
+ <!-- Graphcomment 留言嵌入區（手動點擊按鈕載入，節省流量） -->
+ <div class="space-y-4 pt-4">
+ <div class="flex justify-between items-center border-b border-[#d4c4a8] pb-2">
+ <h3 class="text-base font-bold text-[#3d2c1e] tracking-wider">訪客留言板</h3>
+ </div>
+ <div id="comment-trigger-box" class="text-center py-6 bg-[#f2e6cb] rounded border border-[#d4c4a8]">
+ <p class="text-xs text-[#73593b] mb-3">點擊下方按鈕以載入留言板，參與討論。</p>
+ <button onclick="loadGraphcomment()" class="kraft-btn text-xs px-5 py-2.5 rounded font-medium shadow">點擊展開留言板</button>
+ </div>
+ <div id="graphcomment"></div>
+ </div>
+ </article>
+ `;
+ }
+
+ function loadGraphcomment() {
+ const triggerBox = document.getElementById('comment-trigger-box');
+ if (triggerBox) triggerBox.style.display = 'none';
+
+ window.__semio__params = {
+ graphcommentId: "My-Future-Diary",
+ behaviour: {
+ telemetricThroughCmp: true
+ }
+ };
+ 
+ const existingScript = document.getElementById('graphcomment-script');
+ if (existingScript) existingScript.remove();
+
+ function __semio__onload() {
+ __semio__gc_graphlogin(__semio__params);
+ }
+
+ var gc = document.createElement('script'); 
+ gc.id = 'graphcomment-script';
+ gc.type = 'text/javascript'; 
+ gc.async = true;
+ gc.onload = __semio__onload; 
+ gc.defer = true; 
+ gc.src = 'https://integration.graphcomment.com/gc_graphlogin.js?' + Date.now();
+ (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(gc);
+ }
+
+ function renderSidebar(data) {
+ const container = document.getElementById('sidebar-container');
+ let categoriesMap = {};
+ data.articles.forEach(a => {
+ const cat = a.category || '未分類';
+ categoriesMap[cat] = (categoriesMap[cat] || 0) + 1;
+ });
+
+ const blockComponents = {
+ recent: `
+ <div class="kraft-card p-5 rounded space-y-3">
+ <h3 class="text-xs font-bold text-[#3d2c1e] uppercase tracking-widest border-b border-[#d4c4a8] pb-2">最新文章</h3>
+ <ul class="space-y-2 text-xs">
+ ${data.articles.length === 0 ? '<p class="text-[#8c734b]">尚無文章</p>' : 
+ data.articles.slice(0, 5).map(a => `<li><a href="#article/${a.id}" class="text-[#5c4430] hover:text-[#3d2c1e] block truncate font-medium">• ${a.title}</a></li>`).join('')}
+ </ul>
+ </div>
+ `,
+ category: `
+ <div class="kraft-card p-5 rounded space-y-3">
+ <h3 class="text-xs font-bold text-[#3d2c1e] uppercase tracking-widest border-b border-[#d4c4a8] pb-2">文章類別</h3>
+ <ul class="space-y-2 text-xs">
+ ${Object.keys(categoriesMap).length === 0 ? '<p class="text-[#8c734b]">尚無類別</p>' :
+ Object.entries(categoriesMap).map(([cat, count]) => `
+ <li>
+ <a href="#category/${encodeURIComponent(cat)}" class="flex justify-between items-center text-[#5c4430] hover:text-[#3d2c1e] transition py-0.5">
+ <span>📁 ${cat}</span>
+ <span class="bg-[#e8dbbf] border border-[#c2b091] px-2 py-0.5 rounded text-[10px] text-[#5c4430]">${count}</span>
+ </a>
+ </li>
+ `).join('')}
+ </ul>
+ </div>
+ `,
+ popular: `
+ <div class="kraft-card p-5 rounded space-y-3">
+ <h3 class="text-xs font-bold text-[#3d2c1e] uppercase tracking-widest border-b border-[#d4c4a8] pb-2">熱門文章</h3>
+ <ul class="space-y-2 text-xs">
+ ${data.articles.length === 0 ? '<p class="text-[#8c734b]">尚無文章</p>' :
+ [...data.articles].sort((a,b) => (b.views||0) - (a.views||0)).slice(0, 5).map(a => `<li><a href="#article/${a.id}" class="text-[#5c4430] hover:text-[#3d2c1e] block truncate font-medium">🔥 ${a.title} (${a.views || 0}觀看)</a></li>`).join('')}
+ </ul>
+ </div>
+ `
+ };
+
+ container.innerHTML = data.sidebarOrder.map(blockKey => {
+ if (blockKey.startsWith('custom_')) {
+ const idx = parseInt(blockKey.split('_')[1]);
+ const w = data.customWidgets[idx];
+ if (!w) return '';
+ return `
+ <div class="kraft-card p-5 rounded space-y-3 border-l-4 border-[#b59f78]">
+ <h3 class="text-xs font-bold text-[#3d2c1e] uppercase tracking-widest border-b border-[#d4c4a8] pb-2">${w.title || '自訂小語法'}</h3>
+ <div class="text-xs text-[#5c4430]">${w.content}</div>
+ </div>
+ `;
+ }
+ return blockComponents[blockKey] || '';
+ }).join('');
+ }
+
+ window.addEventListener('hashchange', router);
+ window.addEventListener('load', router);
+ </script>
+</body>
+</html>
